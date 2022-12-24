@@ -50,7 +50,6 @@ pub struct PartDef {
     offset: CoordinateFrame,
     size: Vector3,
     color: Option<Color>,
-    rotation: u8,
     properties: HashMap<String, Variant>,
 }
 
@@ -61,7 +60,6 @@ impl Default for PartDef {
             offset: CoordinateFrame::default(),
             size: Vector3::new(0.0, 0.0, 0.0),
             color: None,
-            rotation: 0,
             properties: HashMap::new(),
         }
     }
@@ -94,11 +92,6 @@ impl PartDef {
         self
     }
 
-    pub fn rotate(mut self, rotation: u8) -> Self {
-        self.rotation = rotation;
-        self
-    }
-
     pub fn property<K: Into<String>, V: Into<Variant>>(mut self, key: K, value: V) -> Self {
         self.properties.insert(key.into(), value.into());
         self
@@ -111,9 +104,8 @@ impl PartDef {
         instance.add_property("Size", self.size);
 
         // write cframe
-        let mat_comp = ORIENTATION_MAP[((brick.direction as u8) << 2
-            | ((brick.rotation as u8 + self.rotation) % 4))
-            as usize];
+        let mat_comp =
+            ORIENTATION_MAP[((brick.direction as u8) << 2 | (brick.rotation as u8)) as usize];
 
         instance.add_property(
             "CFrame",
@@ -177,21 +169,53 @@ pub fn convert_brick(brick: &Brick, save: &SaveData) -> Option<Vec<InstanceBuild
             .size(size.0, size.2, size.1)
             .property("TopSurface", Enum::from_u32(0))
             .to_instance(&save, brick)],
+        "PB_DefaultRamp" => vec![
+            PartDef::new("Part")
+                .size(1.0, size.2, size.1)
+                .offset(size.0 / 2.0 - 0.5, 0.0, 0.0)
+                .to_instance(&save, brick),
+            PartDef::new("WedgePart")
+                .size(size.1, size.2 - 0.2, size.0 - 1.0)
+                .offset(-0.5, 0.1, 0.0)
+                .cf(CoordinateFrame::ry(PI * 0.5))
+                .to_instance(&save, brick),
+            PartDef::new("Part")
+                .size(size.0 - 1.0, 0.2, size.1)
+                .offset(-0.5, -(size.2 / 2.0) + 0.1, 0.0)
+                .to_instance(&save, brick),
+        ],
+        "PB_DefaultRampInverted" => vec![
+            PartDef::new("Part")
+                .size(1.0, size.2, size.1)
+                .offset(size.0 / 2.0 - 0.5, 0.0, 0.0)
+                .to_instance(&save, brick),
+            PartDef::new("WedgePart")
+                .size(size.1, size.2 - 0.2, size.0 - 1.0)
+                .offset(-0.5, -0.1, 0.0)
+                .cf(CoordinateFrame::rx(PI))
+                .cf(CoordinateFrame::ry(PI * 0.5))
+                .to_instance(&save, brick),
+            PartDef::new("Part")
+                .size(size.0 - 1.0, 0.2, size.1)
+                .offset(-0.5, (size.2 / 2.0) - 0.1, 0.0)
+                .to_instance(&save, brick),
+        ],
         "PB_DefaultWedge" => vec![
             PartDef::new("WedgePart")
                 .size(size.1, size.2 - 0.2, size.0)
                 .offset(0.0, 0.1, 0.0)
-                .rotate(1)
+                // .rotate(1)
+                .cf(CoordinateFrame::ry(PI * 0.5))
                 .to_instance(&save, brick),
             PartDef::new("Part")
                 .size(size.1, 0.2, size.0)
                 .offset(0.0, -(size.2 / 2.0) + 0.1, 0.0)
-                .rotate(1)
+                // .rotate(1)
+                .cf(CoordinateFrame::ry(PI * 0.5))
                 .to_instance(&save, brick),
         ],
         "PB_DefaultSideWedge" => vec![PartDef::new("WedgePart")
             .size(size.2, size.0, size.1)
-            .rotate(2)
             .cf(CoordinateFrame::rz(PI * 0.5))
             .property("TopSurface", Enum::from_u32(0))
             .property("BottomSurface", Enum::from_u32(0))
@@ -200,7 +224,6 @@ pub fn convert_brick(brick: &Brick, save: &SaveData) -> Option<Vec<InstanceBuild
             .to_instance(&save, brick)],
         "PB_DefaultSideWedgeTile" => vec![PartDef::new("WedgePart")
             .size(size.2, size.0, size.1)
-            .rotate(2)
             .cf(CoordinateFrame::rz(PI * 0.5))
             .property("TopSurface", Enum::from_u32(0))
             .property("BottomSurface", Enum::from_u32(0))
@@ -230,6 +253,42 @@ pub fn convert_brick(brick: &Brick, save: &SaveData) -> Option<Vec<InstanceBuild
                 .property("BottomSurface", Enum::from_u32(0))
                 .to_instance(&save, brick),
         ],
+        "B_2x2_Round" => vec![PartDef::new("Part")
+            .size(1.2, 2.0, 2.0)
+            .cf(CoordinateFrame::rz(PI * 0.5))
+            .property("Shape", Enum::from_u32(2))
+            .property("TopSurface", Enum::from_u32(0))
+            .property("BottomSurface", Enum::from_u32(0))
+            .property("LeftSurface", Enum::from_u32(4))
+            .property("RightSurface", Enum::from_u32(3))
+            .to_instance(&save, brick)],
+        "B_2x2F_Round" => vec![PartDef::new("Part")
+            .size(0.4, 2.0, 2.0)
+            .cf(CoordinateFrame::rz(PI * 0.5))
+            .property("Shape", Enum::from_u32(2))
+            .property("TopSurface", Enum::from_u32(0))
+            .property("BottomSurface", Enum::from_u32(0))
+            .property("LeftSurface", Enum::from_u32(4))
+            .property("RightSurface", Enum::from_u32(3))
+            .to_instance(&save, brick)],
+        "B_1x1_Round" | "B_1x1_Cone" => vec![PartDef::new("Part")
+            .size(1.2, 1.0, 1.0)
+            .cf(CoordinateFrame::rz(PI * 0.5))
+            .property("Shape", Enum::from_u32(2))
+            .property("TopSurface", Enum::from_u32(0))
+            .property("BottomSurface", Enum::from_u32(0))
+            .property("LeftSurface", Enum::from_u32(4))
+            .property("RightSurface", Enum::from_u32(3))
+            .to_instance(&save, brick)],
+        "B_1x1F_Round" => vec![PartDef::new("Part")
+            .size(1.2, 1.0, 1.0)
+            .cf(CoordinateFrame::rz(PI * 0.5))
+            .property("Shape", Enum::from_u32(2))
+            .property("TopSurface", Enum::from_u32(0))
+            .property("BottomSurface", Enum::from_u32(0))
+            .property("LeftSurface", Enum::from_u32(4))
+            .property("RightSurface", Enum::from_u32(3))
+            .to_instance(&save, brick)],
         _ => return None,
     });
 }
