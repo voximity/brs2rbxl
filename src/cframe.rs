@@ -49,6 +49,10 @@ impl CoordinateFrame {
         }
     }
 
+    pub fn angles(x: f32, y: f32, z: f32) -> Self {
+        Self::rz(z) * Self::ry(y) * Self::rx(x)
+    }
+
     pub fn rx(angle: f32) -> Self {
         Self {
             matrix: [
@@ -96,15 +100,17 @@ impl CoordinateFrame {
 }
 
 impl Mul for CoordinateFrame {
-    type Output = CoordinateFrame;
+    type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
         let mut matrix = [[0.0; 4]; 4];
+        let a = self.matrix;
+        let b = rhs.matrix;
 
         for i in 0..4 {
             for j in 0..4 {
                 for k in 0..4 {
-                    matrix[i][j] += self.matrix[i][k] * rhs.matrix[k][j];
+                    matrix[i][j] += a[i][k] * b[k][j];
                 }
             }
         }

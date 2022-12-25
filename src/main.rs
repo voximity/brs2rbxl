@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufWriter};
+use std::{collections::HashSet, fs::File, io::BufWriter};
 
 use brickadia::read::SaveReader;
 use clap::Parser;
@@ -32,6 +32,7 @@ fn main() {
     let mut model = InstanceBuilder::new("Model");
     model.set_name(cli.input.as_str());
 
+    // attribution script
     model.add_child(
         InstanceBuilder::new("Script")
             .with_name("brs2rbxl")
@@ -43,6 +44,9 @@ fn main() {
                 ),
             ),
     );
+
+    let mut missing_assets: HashSet<&str> = HashSet::new();
+    let mut missing_bricks = 0u32;
 
     for brick in save.bricks.iter() {
         let asset = save.header2.brick_assets[brick.asset_name_index as usize].as_str();
@@ -63,8 +67,23 @@ fn main() {
                     model.add_child(group);
                 }
             }
-            None => println!("Unimplemented brick converter for asset {}", asset),
+            None => {
+                missing_bricks += 1;
+                missing_assets.insert(asset);
+            }
         };
+    }
+
+    if missing_assets.len() > 0 {
+        println!(
+            "Failed to convert {} brick types ({} bricks total).",
+            missing_assets.len(),
+            missing_bricks
+        );
+
+        for asset in missing_assets {
+            println!("* {}", asset);
+        }
     }
 
     let dom = WeakDom::new(model);
